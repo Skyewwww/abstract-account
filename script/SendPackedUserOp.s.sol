@@ -35,13 +35,19 @@ contract SendPackedUserOp is Script {
         address sender,
         bytes memory callData
     ) public pure returns (PackedUserOperation memory userOp) {
+        // Set some reasonable default gas limits so EntryPoint can allocate enough gas for validation
+        // and execution. `accountGasLimits` is packed as (verificationGasLimit << 128) | callGasLimit.
+        uint128 verificationGasLimit = 500_000;
+        uint128 callGasLimit = 500_000;
+        bytes32 accountGasLimits = bytes32((uint256(verificationGasLimit) << 128) | uint256(callGasLimit));
+
         userOp = PackedUserOperation({
             sender: sender,
             nonce: 0,
             initCode: "",
             callData: callData,
-            accountGasLimits: bytes32(0),
-            preVerificationGas: 0,
+            accountGasLimits: accountGasLimits,
+            preVerificationGas: 21000,
             gasFees: bytes32(0),
             paymasterAndData: "",
             signature: ""
