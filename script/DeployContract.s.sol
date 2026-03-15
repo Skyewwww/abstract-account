@@ -7,7 +7,7 @@ import {MinimalAccount} from "src/eth/MininalAccount.sol";
 import {HelperConfig} from "script/HelperConfig.s.sol";
 
 contract DeployContract is Script {
-    function deployMinimalAccount() public returns (HelperConfig, MinimalAccount) {
+    function deployMinimalAccount() public returns (HelperConfig.NetworkConfig memory, MinimalAccount) {
         HelperConfig helperConfig = new HelperConfig();
         HelperConfig.NetworkConfig memory config = helperConfig.getNetworkConfig();
 
@@ -15,6 +15,6 @@ contract DeployContract is Script {
         MinimalAccount minimalAccount = new MinimalAccount(config.entryPoint);
         vm.stopBroadcast();
 
-        return (helperConfig, minimalAccount);
+        return (config, minimalAccount);
     }
 }
