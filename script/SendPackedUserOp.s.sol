@@ -31,6 +31,26 @@ contract SendPackedUserOp is Script {
         userOp.signature = abi.encodePacked(r, s, v); // Note the order
     }
 
+    function generateMultiSignedUserOp(
+        address sender,
+        bytes memory callData,
+        HelperConfig.NetworkConfig memory config,
+        uint256[] memory signerKeys
+    ) public view returns (PackedUserOperation memory userOp) {
+        userOp = generateUserOp(sender, callData);
+
+        bytes32 userOpHash = IEntryPoint(config.entryPoint).getUserOpHash(userOp);
+        bytes32 digest = MessageHashUtils.toEthSignedMessageHash(userOpHash);
+
+        bytes memory packedSignatures;
+        for (uint256 i = 0; i < signerKeys.length; i++) {
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKeys[i], digest);
+            packedSignatures = bytes.concat(packedSignatures, abi.encodePacked(r, s, v));
+        }
+
+        userOp.signature = packedSignatures;
+    }
+
     function generateUserOp(
         address sender,
         bytes memory callData

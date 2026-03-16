@@ -103,4 +103,93 @@ contract MinimalAccountTest is Test {
 
         assertEq(token.balanceOf(address(minimalAccount)), INITIAL_AMOUNT);
     }
+
+    function testValidateUserOpWithMultiSigSuccess() public {
+        uint256 ownerKey1 = 0xA11CE;
+        uint256 ownerKey2 = 0xB0B;
+        uint256 ownerKey3 = 0xCAFE;
+
+        address[] memory owners = new address[](3);
+        owners[0] = vm.addr(ownerKey1);
+        owners[1] = vm.addr(ownerKey2);
+        owners[2] = vm.addr(ownerKey3);
+
+        MinimalAccount multiSigAccount = new MinimalAccount(config.entryPoint, owners, 2);
+
+        address dest = address(token);
+        uint256 value = 0;
+        bytes memory data = abi.encodeWithSignature(
+            "mint(address,uint256)",
+            address(multiSigAccount),
+            INITIAL_AMOUNT
+        );
+        bytes memory callData = abi.encodeWithSignature(
+            "execute(address,uint256,bytes)",
+            dest,
+            value,
+            data
+        );
+
+        uint256[] memory signerKeys = new uint256[](2);
+        signerKeys[0] = ownerKey1;
+        signerKeys[1] = ownerKey2;
+
+        PackedUserOperation memory userOp = sendPackedUserOp.generateMultiSignedUserOp(
+            address(multiSigAccount),
+            callData,
+            config,
+            signerKeys
+        );
+        bytes32 userOpHash = IEntryPoint(config.entryPoint).getUserOpHash(userOp);
+
+        vm.deal(address(multiSigAccount), INITIAL_AMOUNT);
+        vm.prank(config.entryPoint);
+        uint256 validationData = multiSigAccount.validateUserOp(userOp, userOpHash, 1 ether);
+
+        assertEq(validationData, 0);
+    }
+
+    function testValidateUserOpWithMultiSigInsufficientSignatures() public {
+        uint256 ownerKey1 = 0xA11CE;
+        uint256 ownerKey2 = 0xB0B;
+        uint256 ownerKey3 = 0xCAFE;
+
+        address[] memory owners = new address[](3);
+        owners[0] = vm.addr(ownerKey1);
+        owners[1] = vm.addr(ownerKey2);
+        owners[2] = vm.addr(ownerKey3);
+
+        MinimalAccount multiSigAccount = new MinimalAccount(config.entryPoint, owners, 2);
+
+        address dest = address(token);
+        uint256 value = 0;
+        bytes memory data = abi.encodeWithSignature(
+            "mint(address,uint256)",
+            address(multiSigAccount),
+            INITIAL_AMOUNT
+        );
+        bytes memory callData = abi.encodeWithSignature(
+            "execute(address,uint256,bytes)",
+            dest,
+            value,
+            data
+        );
+
+        uint256[] memory signerKeys = new uint256[](1);
+        signerKeys[0] = ownerKey1;
+
+        PackedUserOperation memory userOp = sendPackedUserOp.generateMultiSignedUserOp(
+            address(multiSigAccount),
+            callData,
+            config,
+            signerKeys
+        );
+        bytes32 userOpHash = IEntryPoint(config.entryPoint).getUserOpHash(userOp);
+
+        vm.deal(address(multiSigAccount), INITIAL_AMOUNT);
+        vm.prank(config.entryPoint);
+        uint256 validationData = multiSigAccount.validateUserOp(userOp, userOpHash, 1 ether);
+
+        assertEq(validationData, 1);
+    }
 }
